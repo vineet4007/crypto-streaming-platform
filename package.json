@@ -1,0 +1,37 @@
+{
+  "name": "crypto-streaming-platform",
+  "version": "1.0.0",
+  "description": "A real-time crypto market data platform built using: - WebSocket market feeds - Kafka-based event streaming - Java stream processing - Node.js I/O services - Postgres + Redis",
+  "main": "index.js",
+  "dependencies": {
+    "atomic-sleep": "^1.0.0",
+    "get-caller-file": "^2.0.5",
+    "on-exit-leak-free": "^2.1.2",
+    "pino": "^10.3.0",
+    "pino-abstract-transport": "^3.0.0",
+    "pino-http": "^11.0.0",
+    "pino-std-serializers": "^7.1.0",
+    "process-warning": "^5.0.0",
+    "quick-format-unescaped": "^4.0.4",
+    "real-require": "^0.2.0",
+    "safe-stable-stringify": "^2.5.0",
+    "sonic-boom": "^4.2.0",
+    "split2": "^4.2.0",
+    "thread-stream": "^4.0.0",
+    "uuid": "^13.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vineet4007/crypto-streaming-platform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vineet4007/crypto-streaming-platform/issues"
+  },
+  "homepage": "https://github.com/vineet4007/crypto-streaming-platform#readme"
+}
