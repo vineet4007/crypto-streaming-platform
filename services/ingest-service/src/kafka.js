@@ -1,9 +1,10 @@
 const { Kafka } = require("kafkajs");
 const logger = require("./logger");
 
+const brokers = [process.env.KAFKA_BROKER || "kafka:29092"];
 const kafka = new Kafka({
   clientId: "ingest-service",
-  brokers: ["localhost:9092"]
+  brokers
 });
 
 const producer = kafka.producer();
