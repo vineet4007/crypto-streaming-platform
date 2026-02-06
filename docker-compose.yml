@@ -71,6 +71,16 @@ services:
       POSTGRES_PASSWORD: crypto
     ports:
       - "5432:5432"
+  stream-processor:
+    build: ./services/stream-processor
+    depends_on:
+      - kafka
+      - redis
+    environment:
+      KAFKA_BROKER: kafka:29092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    restart: unless-stopped
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
