@@ -26,6 +26,7 @@
             <artifactId>kafka-clients</artifactId>
             <version>${kafka.version}</version>
         </dependency>
+        
 
         <!-- Redis client -->
         <dependency>

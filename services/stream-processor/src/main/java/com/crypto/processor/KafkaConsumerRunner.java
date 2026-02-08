@@ -1,28 +1,36 @@
 package com.crypto.processor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.apache.kafka.common.TopicPartition;
+import java.time.Duration;
+import java.util.Collection;
+
 
 public class KafkaConsumerRunner {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(KafkaConsumerRunner.class);
+    private static final Logger logger = LoggerFactory.getLogger(KafkaConsumerRunner.class);
+    private final Map<TopicPartition, OffsetAndMetadata> currentOffsets = new ConcurrentHashMap<>();
 
     private final KafkaConsumer<String, String> consumer;
     private final RedisWriter redisWriter;
     private final ObjectMapper objectMapper;
-    private volatile boolean running = true;
+    private final AtomicBoolean running = new AtomicBoolean(true);
 
     public KafkaConsumerRunner(String brokers, RedisWriter redisWriter) {
         this.redisWriter = redisWriter;
@@ -37,77 +45,85 @@ public class KafkaConsumerRunner {
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                 StringDeserializer.class.getName());
 
-        // 🔒 Critical correctness settings
+        // 🔒 Correctness & performance
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
         props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500");
+        props.put("allow.auto.create.topics", "false");
 
         this.consumer = new KafkaConsumer<>(props);
     }
 
     public void start() {
         logger.info("Kafka consumer starting");
-        consumer.subscribe(Collections.singletonList("raw.trades"));
 
-        try {
-            while (running) {
-                ConsumerRecords<String, String> records =
-                        consumer.poll(Duration.ofMillis(500));
+    consumer.subscribe(
+    Collections.singletonList("raw.trades"),
+    new ConsumerRebalanceListener() {
 
-                if (records.isEmpty()) {
-                    continue;
-                }
+        @Override
+        public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+            logger.info("partitions revoked {}", partitions);
 
-                for (ConsumerRecord<String, String> record : records) {
-                    processRecord(record);
-                }
+            // commit processed offsets before losing partitions
+            consumer.commitSync(currentOffsets);
+        }
 
-                // ✅ commit only after all records processed successfully
-                consumer.commitSync();
-            }
-        } catch (WakeupException e) {
-            // Expected during shutdown
-            logger.info("Kafka consumer wakeup");
-        } catch (Exception e) {
-            // Unexpected failure — log but do not hide
-            logger.error("Unexpected error in Kafka consumer loop", e);
-        } finally {
-            consumer.close();
-            logger.info("Kafka consumer closed");
+        @Override
+        public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+            logger.info("partitions assigned {}", partitions);
         }
     }
+);
 
-    private void processRecord(ConsumerRecord<String, String> record) {
+
         try {
-            Trade trade = objectMapper.readValue(record.value(), Trade.class);
+          while (running) {
+    ConsumerRecords<String, String> records =
+            consumer.poll(Duration.ofMillis(500));
 
-            redisWriter.writeLatestPrice(
-                    trade.getSymbol(),
-                    trade.getPrice(),
-                    trade.getTs()
-            );
+    for (ConsumerRecord<String, String> record : records) {
 
+        Trade trade = objectMapper.readValue(record.value(), Trade.class);
+
+        redisWriter.writeLatestPrice(
+                trade.getSymbol(),
+                trade.getPrice(),
+                trade.getTs()
+        );
+
+        // track offset AFTER successful processing
+        currentOffsets.put(
+            new TopicPartition(record.topic(), record.partition()),
+            new OffsetAndMetadata(record.offset() + 1)
+        );
+    }
+
+    // async commit AFTER batch
+    consumer.commitAsync(currentOffsets, (offsets, exception) -> {
+        if (exception != null) {
+            logger.error("async commit failed {}", offsets, exception);
+        }
+    });
+}
+
+        } catch (WakeupException e) {
+            logger.info("Kafka consumer wakeup signal received");
         } catch (Exception e) {
-            logger.error(
-                    "Failed to process record. Will retry. topic={}, partition={}, offset={}",
-                    record.topic(),
-                    record.partition(),
-                    record.offset(),
-                    e
-            );
-
-            /*
-             * ❗ IMPORTANT
-             * - We do NOT throw
-             * - We do NOT commit
-             * - Kafka will retry this record on next poll
-             * - Other partitions continue processing
-             */
+            logger.error("Unexpected consumer error", e);
+        } finally {
+            try {
+                consumer.commitSync();
+                logger.info("Final offset commit completed");
+            } finally {
+                consumer.close();
+                logger.info("Kafka consumer closed");
+            }
         }
     }
 
     public void shutdown() {
-        running = false;
+        running.set(false);
         consumer.wakeup();
     }
 }

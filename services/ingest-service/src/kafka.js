@@ -14,15 +14,20 @@ async function connectProducer() {
   logger.info({ event: "kafka_connected" }, "Kafka producer connected");
 }
 
-async function publishTrade(trade) {
-  await producer.send({
+async function publishTrade(producer, trade) {
+  const result = await producer.send({
     topic: "raw.trades",
-    messages: [
-      {
-        key: trade.symbol,
-        value: JSON.stringify(trade)
-      }
-    ]
+    messages: [{
+      key: trade.symbol,
+      value: JSON.stringify(trade)
+    }]
+  });
+
+  logger.info({
+    event: "trade_published",
+    symbol: trade.symbol,
+    partition: result[0].partition,
+    offset: result[0].baseOffset
   });
 }
 

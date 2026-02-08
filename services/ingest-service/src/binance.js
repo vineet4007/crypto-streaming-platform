@@ -31,4 +31,23 @@ function startBinanceStream() {
   });
 }
 
+// const logger = require("./logger");
+
+function handleTrade(trade) {
+  logger.info({
+    event: "binance_trade_received",
+    symbol: trade.s,
+    price: trade.p,
+    ts: trade.T
+  });
+
+  return {
+    symbol: trade.s,
+    price: Number(trade.p),
+    ts: trade.T
+  };
+}
+
+module.exports = { handleTrade };
+
 module.exports = { startBinanceStream };

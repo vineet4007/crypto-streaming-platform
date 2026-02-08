@@ -19,13 +19,10 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
 
-      # Listeners
-      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
 
-      # 🔴 REQUIRED FOR SINGLE BROKER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
@@ -33,28 +30,19 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
 
     volumes:
-      - ./infra:/infra
+      - ./infra:/infra   # 👈 mounts infra folder into container
 
-  ingest-service:
-    build: ./services/ingest-service
-    container_name: ingest-service
-    depends_on:
-      - kafka
-    environment:
-      KAFKA_BROKER: kafka:29092
-      KAFKAJS_NO_PARTITIONER_WARNING: "1"
-    restart: unless-stopped
-
-  query-service:
-    build: ./services/query-service
-    container_name: query-service
-    depends_on:
-      - kafka
+  postgres:
+    image: postgres:16
+    container_name: postgres
     ports:
-      - "3000:3000"
+      - "5432:5432"
     environment:
-      KAFKA_BROKER: kafka:29092
-    restart: unless-stopped
+      POSTGRES_DB: crypto
+      POSTGRES_USER: crypto
+      POSTGRES_PASSWORD: crypto
+    volumes:
+      - pg_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7
@@ -62,35 +50,19 @@ services:
     ports:
       - "6379:6379"
 
-  postgres:
-    image: postgres:16
-    container_name: postgres
-    environment:
-      POSTGRES_DB: crypto
-      POSTGRES_USER: crypto
-      POSTGRES_PASSWORD: crypto
-    ports:
-      - "5432:5432"
-  stream-processor:
-    build: ./services/stream-processor
-    depends_on:
-      - kafka
-      - redis
-    environment:
-      KAFKA_BROKER: kafka:29092
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    restart: unless-stopped
+# volumes:
+#   pg_data:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
     container_name: elasticsearch
     environment:
-      discovery.type: single-node
-      xpack.security.enabled: "false"
-      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
     volumes:
       - es_data:/usr/share/elasticsearch/data
+      - ./infra/elk/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
     ports:
       - "9200:9200"
 
@@ -99,6 +71,8 @@ services:
     container_name: kibana
     depends_on:
       - elasticsearch
+    volumes:
+      - ./infra/elk/kibana.yml:/usr/share/kibana/config/kibana.yml
     ports:
       - "5601:5601"
 
@@ -108,6 +82,7 @@ services:
     user: root
     depends_on:
       - elasticsearch
+      - kibana
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -115,4 +90,6 @@ services:
     command: ["--strict.perms=false"]
 
 volumes:
+  pg_data:
   es_data:
+

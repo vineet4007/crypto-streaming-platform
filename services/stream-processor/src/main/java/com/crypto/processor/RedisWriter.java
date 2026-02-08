@@ -21,7 +21,9 @@ public class RedisWriter {
         this.connection = redisClient.connect();
         this.commands = connection.sync();
 
-        logger.info("connected to Redis at {}", uri);
+       logger.info(
+        "event=dependency_ready service=stream-processor dependency=redis redis_uri={}",
+         uri );
     }
 
     public void writeLatestPrice(String symbol, double price, long ts) {

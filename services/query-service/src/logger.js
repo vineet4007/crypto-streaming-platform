@@ -1,9 +1,9 @@
 const pino = require("pino");
 
-const logger = pino({
+module.exports = pino({
   level: process.env.LOG_LEVEL || "info",
-  base: { service: "query-service" },
-  timestamp: () => `,"timestamp":"${new Date().toISOString()}"`
+  base: {
+    service: "query-service"
+  },
+  timestamp: pino.stdTimeFunctions.isoTime
 });
-
-module.exports = logger;
