@@ -78,35 +78,28 @@ public class KafkaConsumerRunner {
 
 
         try {
-          while (running) {
-    ConsumerRecords<String, String> records =
-            consumer.poll(Duration.ofMillis(500));
+            while (running.get()) {
+                ConsumerRecords<String, String> records =
+                        consumer.poll(Duration.ofMillis(1000));
 
-    for (ConsumerRecord<String, String> record : records) {
+                if (records.isEmpty()) {
+                    continue;
+                }
 
-        Trade trade = objectMapper.readValue(record.value(), Trade.class);
+                for (ConsumerRecord<String, String> record : records) {
+                    Trade trade = objectMapper.readValue(record.value(), Trade.class);
+                   redisWriter.writeLatestPrice(
+                      trade.getSymbol(),
+                     trade.getPrice(),
+                     trade.getTs());
+                }
 
-        redisWriter.writeLatestPrice(
-                trade.getSymbol(),
-                trade.getPrice(),
-                trade.getTs()
-        );
-
-        // track offset AFTER successful processing
-        currentOffsets.put(
-            new TopicPartition(record.topic(), record.partition()),
-            new OffsetAndMetadata(record.offset() + 1)
-        );
-    }
-
-    // async commit AFTER batch
-    consumer.commitAsync(currentOffsets, (offsets, exception) -> {
-        if (exception != null) {
-            logger.error("async commit failed {}", offsets, exception);
-        }
-    });
-}
-
+                consumer.commitAsync((offsets, exception) -> {
+                    if (exception != null) {
+                        logger.error("Async offset commit failed", exception);
+                    }
+                });
+            }
         } catch (WakeupException e) {
             logger.info("Kafka consumer wakeup signal received");
         } catch (Exception e) {
