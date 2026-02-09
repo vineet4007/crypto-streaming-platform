@@ -1,0 +1,10 @@
+{
+  "name": "news-ingest-service",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "dependencies": {
+    "kafkajs": "^2.2.4",
+    "rss-parser": "^3.13.0",
+    "pino": "^8.17.0"
+  }
+}
