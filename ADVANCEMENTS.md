@@ -218,7 +218,7 @@ This is **production-grade Kafka consumption**.
 
 Now we are taking a step further and making a system which gives a probability on the base of stats and different aspects 
 
-# ADVANCEMENTS — Probabilistic Market Analysis Engine
+#  — Probabilistic Market Analysis Engine
 
 This document captures the **next major architectural advancement** of the Crypto Streaming Platform.
 The focus is **probability-based market analysis**, not prediction, implemented using **parallel stream processing** and **feedback-driven refinement**.
@@ -492,4 +492,172 @@ These are deliberate exclusions.
 ---
 
 > This advancement turns the platform from a data pipeline into a **decision-quality system**.
+
+# 
+
+This document captures **architectural and functional advancements** added beyond a basic streaming pipeline.
+
+The goal is to demonstrate **senior-level system thinking**, extensibility, and revenue-oriented design — not prediction hype.
+
+---
+
+## 1. Probabilistic Strategy Evaluation (Not Prediction)
+
+This system **does not predict markets**.
+
+It computes **probabilities** based on:
+
+* Current market state
+* Historical behavior patterns
+* Real-time confirmation signals
+
+Each strategy outputs:
+
+* Directional bias (long / short / neutral)
+* Confidence score (0–1)
+* Supporting indicator snapshot
+
+---
+
+## 2. Strategy Engine (Java, Parallel)
+
+### Why Java here
+
+* Kafka partition parallelism
+* CPU-bound indicator calculations
+* Deterministic latency under load
+* Mature Kafka client + threading control
+
+### Implemented Strategies
+
+* **VWAP Reversion Strategy**
+* **Breakout Strategy**
+
+Each strategy implements:
+
+```
+Strategy → evaluate(trade, indicators) → StrategyResult
+```
+
+Strategies are:
+
+* Stateless
+* Independently testable
+* Horizontally scalable
+
+---
+
+## 3. Indicator Layer (Pure Computation)
+
+Indicators are isolated from strategy logic.
+
+Current indicators:
+
+* VWAP
+* Volume Profile
+* Range Calculation
+
+Design rules:
+
+* No Kafka access
+* No Redis access
+* No side effects
+
+This allows:
+
+* Easy experimentation
+* Safe parallel execution
+* Deterministic backtesting later
+
+---
+
+## 4. Probability Engine
+
+A centralized **ProbabilityEngine**:
+
+* Aggregates multiple strategy outputs
+* Weighs signals using confidence scoring
+* Produces a unified probability score
+
+This avoids:
+
+* Conflicting strategy decisions
+* Overfitting to one signal
+* Tight coupling between strategies
+
+---
+
+## 5. Outcome Evaluation & Feedback Loop
+
+This is the **core advancement**.
+
+For every probability decision:
+
+1. Market outcome is observed later
+2. Result is classified as hit / miss
+3. Accuracy metrics are recorded
+
+Components:
+
+* `HitMissTracker`
+* `OutcomeEvaluator`
+
+Stored metrics enable:
+
+* Strategy accuracy comparison
+* Probability calibration
+* Future adaptive weighting
+
+---
+
+## 6. Persistence of Results (Postgres)
+
+Results stored:
+
+* Strategy used
+* Probability score
+* Market outcome
+* Timestamp
+* Symbol
+
+This enables:
+
+* Historical performance analysis
+* Strategy refinement
+* Data-driven confidence adjustment
+
+---
+
+## 7. Observability & Monitoring
+
+* Structured logs (JSON)
+* Kafka consumer lifecycle visibility
+* Redis dependency health logging
+* ELK stack integration
+
+Every decision is **traceable**.
+
+---
+
+## 8. Designed for Extension
+
+Planned (no refactor needed):
+
+* Additional strategies
+* Economic/news sentiment ingestion
+* Sector rotation signals
+* Backtesting engine
+* Minimal frontend visualization
+* AWS deployment (ECS / EKS)
+
+---
+
+## Final Note
+
+This system is designed to:
+
+* **Measure probabilities**
+* **Validate outcomes**
+* **Learn from reality**
+
 
