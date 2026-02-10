@@ -3,7 +3,7 @@
 Polls external financial news APIs and publishes normalized events to Kafka.
 
 ## Kafka Topic
-- `news_events`
+- `news.events`
 
 ## Responsibilities
 - Periodic polling

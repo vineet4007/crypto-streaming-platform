@@ -13,7 +13,7 @@ async function startProducer() {
 
 async function publishNews(event) {
   await producer.send({
-    topic: "news_events",
+    topic: "news.events",
     messages: [
       {
         key: event.source || "news",

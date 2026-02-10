@@ -1,6 +1,6 @@
 const express = require("express");
 const logger = require("./logger");
-
+const redis = require('./redis')
 const app = express();
 
 app.get("/price/:symbol", async (req, res) => {
