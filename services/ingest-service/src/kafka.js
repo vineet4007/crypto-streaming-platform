@@ -14,7 +14,7 @@ async function connectProducer() {
   logger.info({ event: "kafka_connected" }, "Kafka producer connected");
 }
 
-async function publishTrade(producer, trade) {
+async function publishTrade(trade) {
   const result = await producer.send({
     topic: "raw.trades",
     messages: [{
@@ -30,6 +30,7 @@ async function publishTrade(producer, trade) {
     offset: result[0].baseOffset
   });
 }
+
 
 module.exports = {
   connectProducer,

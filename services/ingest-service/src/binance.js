@@ -11,15 +11,15 @@ function startBinanceStream() {
     logger.info({ event: "ws_connected" }, "Binance WS connected");
   });
 
-  ws.on("message", async (data) => {
-    const msg = JSON.parse(data.toString());
-
+  ws.on("message", async (msg) => {
+    const data = JSON.parse(msg.toString());
+    if (!data || !data.s || !data.p) return;
     const trade = {
-      symbol: msg.s,
-      price: parseFloat(msg.p),
-      quantity: parseFloat(msg.q),
-      tradeId: msg.t,
-      eventTime: msg.T,
+      symbol: data.s,
+      price: parseFloat(data.p),
+      quantity: parseFloat(data.q),
+     // tradeId: data.t,
+      // eventTime: data.E,
       source: "binance"
     };
 
@@ -38,7 +38,7 @@ function handleTrade(trade) {
     event: "binance_trade_received",
     symbol: trade.s,
     price: trade.p,
-    ts: trade.T
+    ts: trade.E
   });
 
   return {
@@ -48,6 +48,8 @@ function handleTrade(trade) {
   };
 }
 
-module.exports = { handleTrade };
+module.exports = {
+  startBinanceStream,
+  handleTrade
+};
 
-module.exports = { startBinanceStream };
